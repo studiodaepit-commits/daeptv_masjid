@@ -24,6 +24,13 @@ android {
         }
     }
 
+    // ================================
+    // ✅ FIX: Jangan kompres file .wasm
+    // ================================
+    aaptOptions {
+        noCompress "wasm"
+    }
+
     // Menghindari error install APK yang berisi library native
     packagingOptions {
         jniLibs.useLegacyPackaging = true
