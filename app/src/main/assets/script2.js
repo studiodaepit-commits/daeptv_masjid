@@ -486,110 +486,163 @@ async function showContent(contentId) {
                 document.removeEventListener('keydown', handleJadwalKeydown);
             } 
 }
-
-
+async function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]); 
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
 
 async function saveAdminSettings() {
-    // Get values from form
-    settings.masjidName = document.getElementById('adminMasjidName').value;
-    settings.masjidAddress = document.getElementById('adminMasjidAddress').value;
-    settings.prayerTimes.subuh = document.getElementById('adminSubuh').value;
-    settings.prayerTimes.syuruq = document.getElementById('adminSyuruq').value;
-    settings.prayerTimes.imsak = document.getElementById('adminImsak').value;
-    settings.prayerTimes.dzuhur = document.getElementById('adminDzuhur').value;
-    settings.prayerTimes.ashar = document.getElementById('adminAshar').value;
-    settings.prayerTimes.maghrib = document.getElementById('adminMaghrib').value;
-    settings.prayerTimes.isya = document.getElementById('adminIsya').value;
-    settings.quote.text = '"' + document.getElementById('adminQuoteText').value + '"';
-    settings.quote.source = document.getElementById('adminQuoteSource').value;
-    settings.runningText = document.getElementById('adminRunningText').value;
-    
-    // Handle file uploads
-    const heroImageFile = document.getElementById('adminHeroImage').files[0];
-    if (heroImageFile) {
-        settings.heroImage = new Uint8Array(await heroImageFile.arrayBuffer());
-    }
-    
-    const videoQuranFile = document.getElementById('adminVideoQuran').files[0];
-    if (videoQuranFile) {
-        settings.videos.quran = new Uint8Array(await videoQuranFile.arrayBuffer());
-    }
-    
-    const videoKajianFile = document.getElementById('adminVideoKajian').files[0];
-    if (videoKajianFile) {
-        settings.videos.kajian = new Uint8Array(await videoKajianFile.arrayBuffer());
-    }
-    
-    const videoKhutbahFile = document.getElementById('adminVideoKhutbah').files[0];
-    if (videoKhutbahFile) {
-        settings.videos.khutbah = new Uint8Array(await videoKhutbahFile.arrayBuffer());
-    }
-    
-    const audioFile = document.getElementById('adminAudio').files[0];
-    if (audioFile) {
-        settings.audio = new Uint8Array(await audioFile.arrayBuffer());
-    }
-    
-    settings.iqomahDelays = {
-    subuh: parseInt(document.getElementById('delaySubuh').value) || 10,
-    dzuhur: parseInt(document.getElementById('delayDzuhur').value) || 1,
-    ashar: parseInt(document.getElementById('delayAshar').value) || 10,
-    maghrib: parseInt(document.getElementById('delayMaghrib').value) || 5,
-    isya: parseInt(document.getElementById('delayIsya').value) || 2
-};
+    try {
+        // Instant UI disable to avoid double click
+        document.getElementById('saveButton').disabled = true;
 
-    // Simpan ke database
-    db.run("INSERT OR REPLACE INTO masjid_info (id, name, address) VALUES (1, ?, ?)", [settings.masjidName, settings.masjidAddress]);
-     db.run("INSERT OR REPLACE INTO prayer_times (id, subuh, dzuhur, ashar, maghrib, isya, imsak, syuruq) VALUES (1, ?, ?, ?, ?, ?, ?, ?)", [settings.prayerTimes.subuh, settings.prayerTimes.dzuhur, settings.prayerTimes.ashar, settings.prayerTimes.maghrib, settings.prayerTimes.isya, settings.prayerTimes.imsak, settings.prayerTimes.syuruq]);
-    db.run("INSERT OR REPLACE INTO iqomah_delays (id, subuh, dzuhur, ashar, maghrib, isya) VALUES (1, ?, ?, ?, ?, ?)", [settings.iqomahDelays.subuh, settings.iqomahDelays.dzuhur, settings.iqomahDelays.ashar, settings.iqomahDelays.maghrib, settings.iqomahDelays.isya]);
-    db.run("INSERT OR REPLACE INTO quote (id, text, source) VALUES (1, ?, ?)", [settings.quote.text, settings.quote.source]);
-    db.run("INSERT OR REPLACE INTO media (id, hero_image, video_quran, video_kajian, video_khutbah, audio_azan) VALUES (1, ?, ?, ?, ?, ?)", [settings.heroImage, settings.videos.quran, settings.videos.kajian, settings.videos.khutbah, settings.audio]);
-    db.run("INSERT OR REPLACE INTO running_text (id, text) VALUES (1, ?)", [settings.runningText]);
-    
-    // Persist to IndexedDB
-    saveDatabaseToIndexedDB();
-    
-    // Update display
-    await loadSettings();
-    updatePrayerTimes();
-    
-    // Close admin panel
-    toggleAdmin();
-    
-    alert('✔️ Pengaturan berhasil disimpan!');
+        // GET VALUE
+        settings.masjidName = adminMasjidName.value;
+        settings.masjidAddress = adminMasjidAddress.value;
+        settings.prayerTimes.subuh = adminSubuh.value;
+        settings.prayerTimes.syuruq = adminSyuruq.value;
+        settings.prayerTimes.imsak = adminImsak.value;
+        settings.prayerTimes.dzuhur = adminDzuhur.value;
+        settings.prayerTimes.ashar = adminAshar.value;
+        settings.prayerTimes.maghrib = adminMaghrib.value;
+        settings.prayerTimes.isya = adminIsya.value;
+        settings.quote.text = `"${adminQuoteText.value}"`;
+        settings.quote.source = adminQuoteSource.value;
+        settings.runningText = adminRunningText.value;
+
+        // FILES – convert to base64 safely
+        const heroImageFile = adminHeroImage.files[0];
+        const quranFile = adminVideoQuran.files[0];
+        const kajianFile = adminVideoKajian.files[0];
+        const khutbahFile = adminVideoKhutbah.files[0];
+        const audioFile = adminAudio.files[0];
+
+        const heroImage = heroImageFile ? await fileToBase64(heroImageFile) : settings.heroImage;
+        const videoQuran = quranFile ? await fileToBase64(quranFile) : settings.videos.quran;
+        const videoKajian = kajianFile ? await fileToBase64(kajianFile) : settings.videos.kajian;
+        const videoKhutbah = khutbahFile ? await fileToBase64(khutbahFile) : settings.videos.khutbah;
+        const audioAzan = audioFile ? await fileToBase64(audioFile) : settings.audio;
+
+        // SAFE SQL (no undefined!)
+        db.run(
+            "INSERT OR REPLACE INTO masjid_info (id, name, address) VALUES (1, ?, ?)",
+            [settings.masjidName, settings.masjidAddress]
+        );
+
+        db.run(
+            "INSERT OR REPLACE INTO prayer_times (id, subuh, dzuhur, ashar, maghrib, isya, imsak, syuruq) VALUES (1, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                settings.prayerTimes.subuh,
+                settings.prayerTimes.dzuhur,
+                settings.prayerTimes.ashar,
+                settings.prayerTimes.maghrib,
+                settings.prayerTimes.isya,
+                settings.prayerTimes.imsak,
+                settings.prayerTimes.syuruq
+            ]
+        );
+
+        db.run(
+            "INSERT OR REPLACE INTO iqomah_delays (id, subuh, dzuhur, ashar, maghrib, isya) VALUES (1, ?, ?, ?, ?, ?)",
+            [
+                parseInt(delaySubuh.value) || 10,
+                parseInt(delayDzuhur.value) || 1,
+                parseInt(delayAshar.value) || 10,
+                parseInt(delayMaghrib.value) || 5,
+                parseInt(delayIsya.value) || 2
+            ]
+        );
+
+        db.run(
+            "INSERT OR REPLACE INTO quote (id, text, source) VALUES (1, ?, ?)",
+            [settings.quote.text, settings.quote.source]
+        );
+
+        db.run(
+            "INSERT OR REPLACE INTO media (id, hero_image, video_quran, video_kajian, video_khutbah, audio_azan) VALUES (1, ?, ?, ?, ?, ?)",
+            [heroImage, videoQuran, videoKajian, videoKhutbah, audioAzan]
+        );
+
+        db.run(
+            "INSERT OR REPLACE INTO running_text (id, text) VALUES (1, ?)",
+            [settings.runningText]
+        );
+
+        // SAVE DB
+        saveDatabaseToIndexedDB();
+
+        // REFRESH UI
+        await loadSettings();
+        updatePrayerTimes();
+
+        toggleAdmin();
+        alert("✔️ Pengaturan berhasil disimpan!");
+
+    } catch (e) {
+        console.error("SAVE ERROR:", e);
+        alert("❌ Error menyimpan pengaturan: " + e.message);
+    } finally {
+        document.getElementById('saveButton').disabled = false;
+    }
 }
 
 // Fungsi untuk inisialisasi database
 async function initDatabase() {
     try {
-        // Load sql.js
+        console.log("Initializing database…");
+
+        // ----------------------------------------------------
+        // 1. LOAD SQL.js DAN WASM (PERBAIKAN untuk Android APK)
+        // ----------------------------------------------------
         const sqlPromise = initSqlJs({
-            //locateFile: file => `https://sql.js.org/dist/${file}`
-            //locateFile: file => `assets/${file}`
-            //locateFile: file => file
             locateFile: file => `file:///android_asset/${file}`
         });
+
         SQL = await sqlPromise;
-        
-        // Load dari IndexedDB untuk persistensi
+        console.log("SQL.js loaded");
+
+        // ----------------------------------------------------
+        // 2. LOAD DATABASE DARI INDEXEDDB
+        // ----------------------------------------------------
         await loadDatabaseFromIndexedDB();
-         if (!db) {
+
+        if (!db) {
+            console.log("IndexedDB kosong → membuat database baru");
             db = new SQL.Database();
+        } else {
+            console.log("Database loaded from IndexedDB");
         }
 
-        // 3. Tambahkan tabel zoom_settings — SELALU di luar IF
-        db.run(`
-            CREATE TABLE IF NOT EXISTS zoom_settings (
-                id INTEGER PRIMARY KEY,
-                zoom REAL
-            );
-        `);
-        db.run("INSERT OR IGNORE INTO zoom_settings (id, zoom) VALUES (1, 1)");
-        
-        // Jika database kosong atau tabel tidak ada, buat baru
-        if (!tableExists('masjid_info')) {
-            //db = new SQL.Database();
-            // Buat tabel-tabel
+        // ----------------------------------------------------
+        // 3. CEK APAKAH INI DATABASE BARU ATAU SUDAH PERNAH BUAT
+        //    (PRAGMA user_version jauh lebih stabil dari tableExists)
+        // ----------------------------------------------------
+        let userVersion = 0;
+
+        try {
+            const result = db.exec("PRAGMA user_version");
+            if (result.length > 0) {
+                userVersion = result[0].values[0][0];
+            }
+        } catch (e) {
+            console.log("PRAGMA user_version error:", e);
+        }
+
+        const isNewDB = (userVersion === 0);
+
+        // ----------------------------------------------------
+        // 4. DATABASE BARU → BUAT SELURUH TABEL
+        // ----------------------------------------------------
+        if (isNewDB) {
+            console.log("Creating NEW database structure...");
+
+            // Tandai bahwa database sudah pernah dibuat
+            db.run("PRAGMA user_version = 1");
+
             db.run(`
                 CREATE TABLE IF NOT EXISTS masjid_info (
                     id INTEGER PRIMARY KEY,
@@ -597,6 +650,7 @@ async function initDatabase() {
                     address TEXT
                 );
             `);
+
             db.run(`
                 CREATE TABLE IF NOT EXISTS prayer_times (
                     id INTEGER PRIMARY KEY,
@@ -609,6 +663,7 @@ async function initDatabase() {
                     syuruq TEXT
                 );
             `);
+
             db.run(`
                 CREATE TABLE IF NOT EXISTS iqomah_delays (
                     id INTEGER PRIMARY KEY,
@@ -619,6 +674,7 @@ async function initDatabase() {
                     isya INTEGER
                 );
             `);
+
             db.run(`
                 CREATE TABLE IF NOT EXISTS quote (
                     id INTEGER PRIMARY KEY,
@@ -626,6 +682,7 @@ async function initDatabase() {
                     source TEXT
                 );
             `);
+
             db.run(`
                 CREATE TABLE IF NOT EXISTS media (
                     id INTEGER PRIMARY KEY,
@@ -636,60 +693,115 @@ async function initDatabase() {
                     audio_azan BLOB
                 );
             `);
+
             db.run(`
                 CREATE TABLE IF NOT EXISTS running_text (
                     id INTEGER PRIMARY KEY,
                     text TEXT
                 );
             `);
+
             db.run(`
                 CREATE TABLE IF NOT EXISTS ayat_pdf (
                     id INTEGER PRIMARY KEY,
                     pdf_data BLOB
                 );
             `);
-             db.run(`
+
+            db.run(`
                 CREATE TABLE IF NOT EXISTS kas_pdf (
                     id INTEGER PRIMARY KEY,
                     pdf_data BLOB
                 );
             `);
+
             db.run(`
                 CREATE TABLE IF NOT EXISTS jadwal_pdf (
                     id INTEGER PRIMARY KEY,
                     pdf_data BLOB
                 );
             `);
-            
 
-            // Insert defaults
-            db.run("INSERT INTO masjid_info (id, name, address) VALUES (1, ?, ?)", [defaultSettings.masjidName, defaultSettings.masjidAddress]);
-            db.run("INSERT INTO prayer_times (id, subuh, dzuhur, ashar, maghrib, isya, imsak, syuruq) VALUES (1, ?, ?, ?, ?, ?, ?, ?)", [defaultSettings.prayerTimes.subuh, defaultSettings.prayerTimes.dzuhur, defaultSettings.prayerTimes.ashar, defaultSettings.prayerTimes.maghrib, defaultSettings.prayerTimes.isya, defaultSettings.prayerTimes.imsak, defaultSettings.prayerTimes.syuruq]);
-            db.run("INSERT INTO iqomah_delays (id, subuh, dzuhur, ashar, maghrib, isya) VALUES (1, ?, ?, ?, ?, ?)", [defaultSettings.iqomahDelays.subuh, defaultSettings.iqomahDelays.dzuhur, defaultSettings.iqomahDelays.ashar, defaultSettings.iqomahDelays.maghrib, defaultSettings.iqomahDelays.isya]);
-            db.run("INSERT INTO quote (id, text, source) VALUES (1, ?, ?)", [defaultSettings.quote.text, defaultSettings.quote.source]);
-            db.run("INSERT INTO media (id, hero_image, video_quran, video_kajian, video_khutbah, audio_azan) VALUES (1, ?, ?, ?, ?, ?)", [defaultSettings.heroImage, defaultSettings.videos.quran, defaultSettings.videos.kajian, defaultSettings.videos.khutbah, defaultSettings.audio]);
-            db.run("INSERT INTO running_text (id, text) VALUES (1, ?)", [defaultSettings.runningText]);
+            db.run(`
+                CREATE TABLE IF NOT EXISTS zoom_settings (
+                    id INTEGER PRIMARY KEY,
+                    zoom REAL
+                );
+            `);
 
+            // Insert default values
+            db.run("INSERT INTO zoom_settings (id, zoom) VALUES (1, 1)");
+            db.run("INSERT INTO masjid_info (id, name, address) VALUES (1, ?, ?)",
+                [defaultSettings.masjidName, defaultSettings.masjidAddress]
+            );
+
+            db.run(
+                "INSERT INTO prayer_times (id, subuh, dzuhur, ashar, maghrib, isya, imsak, syuruq) VALUES (1, ?, ?, ?, ?, ?, ?, ?)",
+                [
+                    defaultSettings.prayerTimes.subuh,
+                    defaultSettings.prayerTimes.dzuhur,
+                    defaultSettings.prayerTimes.ashar,
+                    defaultSettings.prayerTimes.maghrib,
+                    defaultSettings.prayerTimes.isya,
+                    defaultSettings.prayerTimes.imsak,
+                    defaultSettings.prayerTimes.syuruq
+                ]
+            );
+
+            db.run(
+                "INSERT INTO iqomah_delays (id, subuh, dzuhur, ashar, maghrib, isya) VALUES (1, ?, ?, ?, ?, ?)",
+                [
+                    defaultSettings.iqomahDelays.subuh,
+                    defaultSettings.iqomahDelays.dzuhur,
+                    defaultSettings.iqomahDelays.ashar,
+                    defaultSettings.iqomahDelays.maghrib,
+                    defaultSettings.iqomahDelays.isya
+                ]
+            );
+
+            db.run("INSERT INTO quote (id, text, source) VALUES (1, ?, ?)",
+                [defaultSettings.quote.text, defaultSettings.quote.source]
+            );
+
+            db.run(
+                "INSERT INTO media (id, hero_image, video_quran, video_kajian, video_khutbah, audio_azan) VALUES (1, ?, ?, ?, ?, ?)",
+                [
+                    defaultSettings.heroImage,
+                    defaultSettings.videos.quran,
+                    defaultSettings.videos.kajian,
+                    defaultSettings.videos.khutbah,
+                    defaultSettings.audio
+                ]
+            );
+
+            db.run("INSERT INTO running_text (id, text) VALUES (1, ?)",
+                [defaultSettings.runningText]
+            );
+
+            // Pastikan database baru langsung disimpan
+            await new Promise(r => setTimeout(r, 10));
+            await saveDatabaseToIndexedDB();
         }
-        
-        // Load settings ke memory SETELAH tabel dibuat
+        // ----------------------------------------------------
+        // 5. LOAD SETTINGS SETELAH SEMUA TABEL ADA
+        // ----------------------------------------------------
         await loadSettings();
+        // ----------------------------------------------------
+        // 6. LOAD ZOOM LEVEL
+        // ----------------------------------------------------
         try {
-                const z = db.exec("SELECT zoom FROM zoom_settings WHERE id = 1");
-                if (z && z.length && z[0].values.length) {
-                    applyZoom(z[0].values[0][0]);
-                }
-            } catch (e) {
-                console.log("Zoom read error:", e);
+            const z = db.exec("SELECT zoom FROM zoom_settings WHERE id = 1");
+            if (z && z.length && z[0].values.length) {
+                applyZoom(z[0].values[0][0]);
             }
+        } catch (e) {
+            console.log("Zoom read error:", e);
+        }
 
-        //applyZoom(settings.zoomLevel);
-
-        console.log('Database initialized successfully');
+        console.log("Database initialized successfully.");
     } catch (error) {
-        console.error('Error initializing database:', error);
-        // Fallback ke defaults jika gagal
-        settings = { ...defaultSettings };
+        console.error("Error initializing database:", error);
+        settings = { ...defaultSettings }; // fallback
     }
 }
 
