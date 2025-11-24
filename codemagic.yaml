@@ -1,6 +1,6 @@
 workflows:
   android-tv:
-    name: DaepTV_Masjid Build
+    name: daeptv_masjid Build
     max_build_duration: 60
 
     environment:
