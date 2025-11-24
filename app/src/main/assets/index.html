@@ -256,10 +256,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     applyZoom(zoomLevel);
 
-    function saveZoomToDB() {
+    async function saveZoomToDB() {
     try {
         db.run("INSERT OR REPLACE INTO zoom_settings (id, zoom) VALUES (1, ?)", [zoomLevel]);
-        saveDatabaseToIndexedDB();
+        await new Promise(r => setTimeout(r, 10));
+        await saveDatabaseToIndexedDB();
     } catch (e) {
         console.log("SQLite save error:", e);
     }
