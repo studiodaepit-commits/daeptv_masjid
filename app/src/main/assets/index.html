@@ -58,15 +58,29 @@
         <button id="refresh" class="ctrl-btn">🔄</button>
     </div>
 </li>
-
-    
   </ul>
 </div>
+    <div id="noticeBox" class="notice-box"></div>
+
  <!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
   <script src="jquery-3.6.0.min.js"></script>
  <!--  <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.1.0/turn.min.js"></script> 
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4.1.0/turn.min.css"> -->
 <script>
+    function showNotice(message, type = "success") {
+    const box = document.getElementById("noticeBox");
+    box.innerText = message;
+
+    box.classList.remove("notice-success", "notice-error");
+    box.classList.add(type === "success" ? "notice-success" : "notice-error");
+
+    box.style.display = "block";
+
+    setTimeout(() => {
+        box.style.display = "none";
+    }, 3000);
+}
+
 // Definisi fungsi startScroll dan stopScroll
 function startScroll() {
     const masjidName = document.getElementById('alamatberjalan');
