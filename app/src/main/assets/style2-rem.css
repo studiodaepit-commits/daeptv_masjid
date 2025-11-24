@@ -1558,4 +1558,20 @@ input:checked + .slider2:before {
 .clock span {
     white-space: nowrap !important;
 }
+
+.notice-box {
+    position: fixed;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 20px;
+    border-radius: 6px;
+    color: white;
+    font-size: 16px;
+    z-index: 9999;
+    display: none;
+}
+.notice-success { background: #1a8f3a; }
+.notice-error { background: #c62828; }
+
       
