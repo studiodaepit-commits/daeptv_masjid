@@ -496,13 +496,27 @@ async function fileToBase64(file) {
 }
 
 async function saveAdminSettings() {
-    try {
-        // Instant UI disable to avoid double click
-        document.getElementById('saveButton').disabled = true;
+    const btn = document.getElementById("simpan_admin");
+    let timer = 3;
 
-        // GET VALUE
+    // NONAKTIFKAN tombol untuk cegah double click
+    btn.disabled = true;
+    btn.innerText = `Menyimpan... (${timer})`;
+
+    // HITUNG MUNDUR
+    const countdown = setInterval(() => {
+        timer--;
+        btn.innerText = `Menyimpan... (${timer})`;
+        if (timer <= 0) clearInterval(countdown);
+    }, 1000);
+
+    try {
+        // ============================
+        // 1. AMBIL SEMUA VALUE FORM
+        // ============================
         settings.masjidName = adminMasjidName.value;
         settings.masjidAddress = adminMasjidAddress.value;
+
         settings.prayerTimes.subuh = adminSubuh.value;
         settings.prayerTimes.syuruq = adminSyuruq.value;
         settings.prayerTimes.imsak = adminImsak.value;
@@ -510,11 +524,15 @@ async function saveAdminSettings() {
         settings.prayerTimes.ashar = adminAshar.value;
         settings.prayerTimes.maghrib = adminMaghrib.value;
         settings.prayerTimes.isya = adminIsya.value;
-        settings.quote.text = `"${adminQuoteText.value}"`;
+
+        settings.quote.text = adminQuoteText.value;
         settings.quote.source = adminQuoteSource.value;
+
         settings.runningText = adminRunningText.value;
 
-        // FILES – convert to base64 safely
+        // ============================
+        // 2. FILES (BASE64)
+        // ============================
         const heroImageFile = adminHeroImage.files[0];
         const quranFile = adminVideoQuran.files[0];
         const kajianFile = adminVideoKajian.files[0];
@@ -527,7 +545,9 @@ async function saveAdminSettings() {
         const videoKhutbah = khutbahFile ? await fileToBase64(khutbahFile) : settings.videos.khutbah;
         const audioAzan = audioFile ? await fileToBase64(audioFile) : settings.audio;
 
-        // SAFE SQL (no undefined!)
+        // ============================
+        // 3. SIMPAN KE DATABASE
+        // ============================
         db.run(
             "INSERT OR REPLACE INTO masjid_info (id, name, address) VALUES (1, ?, ?)",
             [settings.masjidName, settings.masjidAddress]
@@ -549,11 +569,11 @@ async function saveAdminSettings() {
         db.run(
             "INSERT OR REPLACE INTO iqomah_delays (id, subuh, dzuhur, ashar, maghrib, isya) VALUES (1, ?, ?, ?, ?, ?)",
             [
-                parseInt(delaySubuh.value) || 10,
-                parseInt(delayDzuhur.value) || 1,
-                parseInt(delayAshar.value) || 10,
-                parseInt(delayMaghrib.value) || 5,
-                parseInt(delayIsya.value) || 2
+                parseInt(delaySubuh.value) || 0,
+                parseInt(delayDzuhur.value) || 0,
+                parseInt(delayAshar.value) || 0,
+                parseInt(delayMaghrib.value) || 0,
+                parseInt(delayIsya.value) || 0
             ]
         );
 
@@ -572,23 +592,32 @@ async function saveAdminSettings() {
             [settings.runningText]
         );
 
-        // SAVE DB
-        saveDatabaseToIndexedDB();
+        // ============================
+        // 4. SIMPAN DB KE INDEXEDDB
+        // ============================
+        await saveDatabaseToIndexedDB();
 
-        // REFRESH UI
+        showNotice("✔️ Pengaturan berhasil disimpan!", "success");
+
+        // Reload UI
         await loadSettings();
         updatePrayerTimes();
-
         toggleAdmin();
-        alert("✔️ Pengaturan berhasil disimpan!");
 
     } catch (e) {
         console.error("SAVE ERROR:", e);
-        alert("❌ Error menyimpan pengaturan: " + e.message);
-    } finally {
-        document.getElementById('saveButton').disabled = false;
+        showNotice("❌ Error menyimpan pengaturan!", "error");
     }
+
+    // ============================
+    // 5. RESET TOMBOL SETELAH 3 DETIK
+    // ============================
+    setTimeout(() => {
+        btn.disabled = false;
+        btn.innerText = "💾 Simpan";
+    }, 3000);
 }
+
 
 // Fungsi untuk inisialisasi database
 async function initDatabase() {
@@ -810,11 +839,16 @@ function applyZoom(level) {
 }
 
 // Fungsi untuk cek apakah tabel ada
+
 function tableExists(tableName) {
     try {
-        const result = db.exec(`SELECT name FROM sqlite_master WHERE type='table' AND name='${tableName}'`);
-        return result.length > 0 && result[0].values.length > 0;
+        const res = db.exec(`
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name='${tableName}'
+        `);
+        return res.length > 0;
     } catch (e) {
+        console.error("tableExists error:", e);
         return false;
     }
 }
