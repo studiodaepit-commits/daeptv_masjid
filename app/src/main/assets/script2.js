@@ -630,7 +630,8 @@ async function initDatabase() {
         const sqlPromise = initSqlJs({
             //locateFile: file => `file:///android_asset/${file}`
            // locateFile: file => `./${file}`
-            locateFile: file => file
+           // locateFile: file => file
+            locateFile: () => "sql-wasm.wasm"
         });
 
         SQL = await sqlPromise;
