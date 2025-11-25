@@ -631,7 +631,9 @@ async function initDatabase() {
             //locateFile: file => `file:///android_asset/${file}`
            // locateFile: file => `./${file}`
            // locateFile: file => file
-            locateFile: () => "sql-wasm.wasm"
+            //locateFile: () => "sql-wasm.wasm"
+            locateFile: file => `file:///android_asset/sql-wasm.wasm`
+
         });
 
         SQL = await sqlPromise;
