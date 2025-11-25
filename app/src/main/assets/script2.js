@@ -628,7 +628,8 @@ async function initDatabase() {
         // 1. LOAD SQL.js DAN WASM (PERBAIKAN untuk Android APK)
         // ----------------------------------------------------
         const sqlPromise = initSqlJs({
-            locateFile: file => `file:///android_asset/${file}`
+            //locateFile: file => `file:///android_asset/${file}`
+            locateFile: file => `./${file}`
         });
 
         SQL = await sqlPromise;
